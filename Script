@@ -1,0 +1,114 @@
+-- LocalScript em StarterPlayer > StarterPlayerScripts
+-- Use apenas em jogo SEU, no Roblox Studio.
+-- Aviso + travamento + som alto em loop. Client-side, reversível ao sair.
+
+local Players = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- === CONFIGURAÇÃO DO SOM ===
+local SOM_ID = "rbxassetid://8280196339"  -- Very Loud Scream (troque se não tocar)
+local VOLUME = 10                          -- volume máximo do Roblox
+local LOOP = true                          -- toca em loop até sair
+
+-- === ESCONDE A CORE GUI ===
+pcall(function()
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+end)
+
+-- === CRIA O AVISO NA TELA ===
+if playerGui:FindFirstChild("AvisoTrava") then
+    playerGui.AvisoTrava:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AvisoTrava"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = playerGui
+
+local fundo = Instance.new("Frame")
+fundo.Size = UDim2.fromScale(1, 1)
+fundo.Position = UDim2.fromScale(0, 0)
+fundo.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+fundo.BackgroundTransparency = 0
+fundo.BorderSizePixel = 0
+fundo.ZIndex = 1
+fundo.Parent = gui
+
+local texto = Instance.new("TextLabel")
+texto.Size = UDim2.fromScale(1, 1)
+texto.BackgroundTransparency = 1
+texto.Text = "⚠️ AVISO ⚠️\n\nO seu Roblox foi travado.\nVocê não consegue andar, pular nem mexer.\nO único jeito de tirar isso da tela é saindo e entrando do jogo."
+texto.TextColor3 = Color3.fromRGB(255, 50, 50)
+texto.TextScaled = false
+texto.TextSize = 40
+texto.TextWrapped = true
+texto.TextXAlignment = Enum.TextXAlignment.Center
+texto.TextYAlignment = Enum.TextYAlignment.Center
+texto.Font = Enum.Font.SourceSansBold
+texto.ZIndex = 2
+texto.Parent = fundo
+
+-- === TOCA O SOM ALTO EM LOOP ===
+local som = Instance.new("Sound")
+som.Name = "SomTrava"
+som.SoundId = SOM_ID
+som.Volume = VOLUME
+som.Looped = LOOP
+som.PlayOnRemove = false
+som.Parent = SoundService
+
+-- Espera o som carregar antes de tocar (evita "não tocou")
+local carregado = false
+som.Loaded:Connect(function() carregado = true end)
+
+task.spawn(function()
+    local t = 0
+    while not carregado and t < 5 do
+        task.wait(0.1)
+        t += 0.1
+    end
+    som:Play()
+end)
+
+-- === TRAVA O PERSONAGEM ===
+local function travarPersonagem(char)
+    local humanoid = char:WaitForChild("Humanoid", 5)
+    if humanoid then
+        humanoid.WalkSpeed = 0
+        humanoid.JumpPower = 0
+        humanoid.JumpHeight = 0
+    end
+end
+
+if player.Character then
+    travarPersonagem(player.Character)
+end
+player.CharacterAdded:Connect(travarPersonagem)
+
+-- === BLOQUEIA OS CONTROLES ===
+local function bloquearAcoes()
+    return Enum.ContextActionResult.Sink
+end
+
+ContextActionService:BindAction("BloquearMovimentoTrava", bloquearAcoes, false,
+    Enum.PlayerActions.CharacterForward,
+    Enum.PlayerActions.CharacterBackward,
+    Enum.PlayerActions.CharacterLeft,
+    Enum.PlayerActions.CharacterRight,
+    Enum.PlayerActions.CharacterJump
+)
+
+-- === PARA PARAR TUDO (manual, se quiser testar) ===
+-- gui:Destroy()
+-- som:Stop()
+-- som:Destroy()
+-- ContextActionService:UnbindAction("BloquearMovimentoTrava")
+-- pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end)
